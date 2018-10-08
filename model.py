@@ -34,18 +34,19 @@ import os
 import numpy as np
 
 # 数据保存地址
-BASE_DIR = '/data0/search/ai_challenger/2/'
-WORD2VEC = '/data0/search/textcnn/data/sgns.merge.bigram'
+BASE_DIR = '/data0/search/ai_challenger/'
+WORD2VEC = os.path.join(BASE_DIR, 'data/sgns.merge.bigram')
 TRAIN_DATA_PATH = os.path.join(BASE_DIR, 'data/train/sentiment_analysis_trainingset.csv')
 TEST_DATA_PATH = os.path.join(BASE_DIR, 'data/test/sentiment_analysis_testa.csv')
 VALIDATION_DATA_PATH = os.path.join(BASE_DIR, 'data/train/sentiment_analysis_trainingset.csv')
 WORD_INDEX = os.path.join(BASE_DIR, 'data/word_index.npy')
 EMBEDDING_MATRIX = os.path.join(BASE_DIR, 'data/embedding_matrix.npy')
 SEG_DATA = os.path.join(BASE_DIR, 'data/seg_data.csv')
+PROCESSED_DATA = os.path.join(BASE_DIR, 'data/processed_data.csv')
 
-MODEL_DIR = os.path.join(BASE_DIR, 'text2label123/')
-NUMERIC_DATA = os.path.join(MODEL_DIR, 'numeric_data.csv')
-MODEL = os.path.join(MODEL_DIR, 'model.h5')
+MODEL_DIR = os.path.join(BASE_DIR, 'models/')
+# NUMERIC_DATA = os.path.join(MODEL_DIR, 'numeric_data.csv')
+# MODEL = os.path.join(MODEL_DIR, 'model.h5')
 
 SEG_SPLITTER = ' '
 word_index = {}
@@ -100,7 +101,7 @@ label_dict = {'location_traffic_convenience': 'l1',
               'others_willing_to_consume_again': 'l20'}
 
 # 打开停用词表并做处理
-STOP_WORDS_LIST = '/data0/search/textcnn/data/stop_list.txt'  # 停用词表
+STOP_WORDS_LIST = os.path.join(BASE_DIR, 'data/stop_list.txt')  # 停用词表
 with open(STOP_WORDS_LIST, 'r') as f:
     stop_words = f.readlines()
 del stop_words[0]  # 删除txt文件第一行的特殊字符
@@ -118,14 +119,12 @@ def prepare_data():
     5
     :return:
     """
-
     # 分词
     # 构建wordindex时将三个集合的文本都放进去
     data = pd.read_csv(TRAIN_DATA_PATH)
     data2 = pd.read_csv(TEST_DATA_PATH)
     data3 = pd.read_csv(VALIDATION_DATA_PATH)
     alldata = data.append(data2, ignore_index=True).append(data3, ignore_index=True)
-    seg_data = data
 
     data['tokens'] = data['content'].map(segment)
     alldata['tokens'] = alldata['content'].map(segment)
@@ -149,21 +148,12 @@ def prepare_data():
     data['indexes'] = data['tokens'].map(word2index)
 
     # 保存处理后的结果
-    data.to_csv(SEG_DATA)
+    # data.to_csv(SEG_DATA)
+    data.to_csv(PROCESSED_DATA)
 
-    # 处理标签
-    for i in range(20):
-        label_index = 'l' + str(i + 1)
-        file_name = 'numeric_data_' + label_index + '.csv'
-        # print(file_name)
-        one_label_data = data[['indexes', label_index]]
-        one_label_data.rename(columns={label_index: 'labels'}, inplace=True)
-        numeric_data = one_label_data[['indexes', 'labels']]
-        numeric_data.to_csv(os.path.join(MODEL_DIR, file_name), encoding='utf-8')
-        print(pd.Series(numeric_data['labels']).value_counts())
-
-    # 保存结果
-    #　numeric_data.to_csv(NUMERIC_DATA, encoding='utf-8')
+    # 处理标签，生成每个模型需要的numeric_data，共计20个，并保存结果
+    generate_numeric_data()
+    print('generate_numeric_data')
 
     # 获取embeddings_index（加载预训练好的word2vec词典）
     embeddings_index = get_embeddings_index()
@@ -173,6 +163,28 @@ def prepare_data():
     embedding_matrix = generate_embedding_matrix(embeddings_index)
     np.save(EMBEDDING_MATRIX, embedding_matrix)
     print('generate_embedding_matrix and save to' + EMBEDDING_MATRIX)
+
+
+def generate_numeric_data():
+    """
+    生成每个模型需要的numeric_data，共计20个
+    :return:
+    """
+    # 获取预处理的数据
+    processed_data = pd.read_csv(SEG_DATA, lineterminator='\n')
+
+    # 处理标签
+    for i in range(20):
+        label_index = 'l' + str(i + 1)
+        file_name = 'numeric_data_' + label_index + '.csv'
+        # print(file_name)
+        one_label_data = processed_data[['indexes', label_index]]
+        one_label_data.rename(columns={label_index: 'labels'}, inplace=True)
+        numeric_data = one_label_data[['indexes', 'labels']]
+        numeric_data.to_csv(os.path.join(MODEL_DIR, file_name), encoding='utf-8')
+        print(pd.Series(numeric_data['labels']).value_counts())
+
+
 
 
 def pre_processing_multi_class(path):
@@ -347,15 +359,19 @@ def generate_embedding_matrix(embeddings_index):
 
 
 if __name__ == '__main__':
+    # 根据原始数据生成训练用数据，如果已经处理好，则直接调用结果
+    # prepare_data()
+
+    # 训练20个模型
     model = text_cnn_multi_class()
     model.summary()
     for i in range(20):
-        path = os.path.join(MODEL_DIR, 'numeric_data_l' + str(i+1) + '.csv')
+        path = os.path.join(MODEL_DIR, 'numeric_data_l' + str(i + 1) + '.csv')
         x_train, y_train, x_test, y_test = pre_processing_multi_class(path)
         model.fit(x_train, y_train,
                   batch_size=BATCH_SIZE,
-                  epochs=NUM_EPOCHS,validation_split=VALIDATION_SPLIT,
+                  epochs=NUM_EPOCHS, validation_split=VALIDATION_SPLIT,
                   shuffle=True)
         scores = model.evaluate(x_test, y_test)
         print('test_loss: %f, accuracy: %f' % (scores[0], scores[1]))
-        model.save(os.path.join(MODEL_DIR, 'model_l' + str(i) + '.h5'))
+        model.save(os.path.join(MODEL_DIR, 'model_l' + str(i + 1) + '.h5'))
