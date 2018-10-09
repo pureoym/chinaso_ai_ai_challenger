@@ -35,6 +35,7 @@ import numpy as np
 
 # 数据保存地址
 BASE_DIR = '/data0/search/ai_challenger/'
+DATA_DIR = os.path.join(BASE_DIR, 'data/')
 WORD2VEC = os.path.join(BASE_DIR, 'data/sgns.merge.bigram')
 TRAIN_DATA_PATH = os.path.join(BASE_DIR, 'data/train/sentiment_analysis_trainingset.csv')
 TEST_DATA_PATH = os.path.join(BASE_DIR, 'data/test/sentiment_analysis_testa.csv')
@@ -181,10 +182,8 @@ def generate_numeric_data():
         one_label_data = processed_data[['indexes', label_index]]
         one_label_data.rename(columns={label_index: 'labels'}, inplace=True)
         numeric_data = one_label_data[['indexes', 'labels']]
-        numeric_data.to_csv(os.path.join(MODEL_DIR, file_name), encoding='utf-8')
+        numeric_data.to_csv(os.path.join(DATA_DIR, file_name), encoding='utf-8')
         print(pd.Series(numeric_data['labels']).value_counts())
-
-
 
 
 def pre_processing_multi_class(path):
@@ -200,8 +199,8 @@ def pre_processing_multi_class(path):
     data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH, padding='post')
     labels = d1['labels'].values.reshape(-1, 1)
     labels = to_categorical(labels)
-    print('Shape of data tensor:', data.shape)
-    print('Shape of label tensor:', labels.shape)
+    # print('Shape of data tensor:', data.shape)
+    # print('Shape of label tensor:', labels.shape)
 
     # 切分训练集和测试集
     data_size = data.shape[0]
@@ -215,10 +214,10 @@ def pre_processing_multi_class(path):
     y_train = labels[:-train_test_samples]
     x_test = data[-train_test_samples:]
     y_test = labels[-train_test_samples:]
-    print('Shape of data x_train:', x_train.shape)
-    print('Shape of label y_train:', y_train.shape)
-    print('Shape of data x_test:', x_test.shape)
-    print('Shape of label y_test:', y_test.shape)
+    # print('Shape of data x_train:', x_train.shape)
+    # print('Shape of label y_train:', y_train.shape)
+    # print('Shape of data x_test:', x_test.shape)
+    # print('Shape of label y_test:', y_test.shape)
     return x_train, y_train, x_test, y_test
 
 
@@ -358,20 +357,37 @@ def generate_embedding_matrix(embeddings_index):
     return embedding_matrix
 
 
+def train_and_save_model(model_index_list, epochs_number, model):
+    for i in model_index_list:
+        print('################[ multi_epochs_model_' + str(i) + ' ]################')
+        path = os.path.join(DATA_DIR, 'numeric_data_l' + str(i) + '.csv')
+        x_train, y_train, x_test, y_test = pre_processing_multi_class(path)
+        model.fit(x_train, y_train,
+                  batch_size=BATCH_SIZE,
+                  epochs=epochs_number, validation_split=VALIDATION_SPLIT,
+                  shuffle=True)
+        scores = model.evaluate(x_test, y_test)
+        print('test_loss: %f, accuracy: %f' % (scores[0], scores[1]))
+        model.save(os.path.join(MODEL_DIR, 'model_' + str(i) + '_epoch_' + str(epochs_number) + '.h5'))
+
+
 if __name__ == '__main__':
     # 根据原始数据生成训练用数据，如果已经处理好，则直接调用结果
     # prepare_data()
 
-    # 训练20个模型
+    # 构建模型
     model = text_cnn_multi_class()
     model.summary()
-    for i in range(20):
-        path = os.path.join(MODEL_DIR, 'numeric_data_l' + str(i + 1) + '.csv')
-        x_train, y_train, x_test, y_test = pre_processing_multi_class(path)
-        model.fit(x_train, y_train,
-                  batch_size=BATCH_SIZE,
-                  epochs=NUM_EPOCHS, validation_split=VALIDATION_SPLIT,
-                  shuffle=True)
-        scores = model.evaluate(x_test, y_test)
-        print('test_loss: %f, accuracy: %f' % (scores[0], scores[1]))
-        model.save(os.path.join(MODEL_DIR, 'model_l' + str(i + 1) + '.h5'))
+
+    # 训练20个模型
+    epochs_number_1 = 1
+    model_epoch_1 = range(1, 21)
+    train_and_save_model(model_epoch_1, epochs_number_1, model)
+
+    epochs_number_3 = 3
+    model_epoch_3 = [5, 8, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20]
+    train_and_save_model(model_epoch_3, epochs_number_3, model)
+
+    epochs_number_10 = 10
+    model_epoch_10 = [8, 13, 15, 16, 17, 19, 20]
+    train_and_save_model(model_epoch_10, epochs_number_10, model)
