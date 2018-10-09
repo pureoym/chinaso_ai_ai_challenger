@@ -370,24 +370,34 @@ def train_and_save_model(model_index_list, epochs_number, model):
         print('test_loss: %f, accuracy: %f' % (scores[0], scores[1]))
         model.save(os.path.join(MODEL_DIR, 'model_' + str(i) + '_epoch_' + str(epochs_number) + '.h5'))
 
+###########################################
+## 贴到此分隔符以上
 
 if __name__ == '__main__':
     # 根据原始数据生成训练用数据，如果已经处理好，则直接调用结果
     # prepare_data()
 
+    # 第一步，在jupyter里构建模型
     # 构建模型
     model = text_cnn_multi_class()
     model.summary()
 
+    # 第二部，训练并保存模型
     # 训练20个模型
-    epochs_number_1 = 1
-    model_epoch_1 = range(1, 21)
-    train_and_save_model(model_epoch_1, epochs_number_1, model)
+    # epochs_number_1 = 1
+    # model_epoch_1 = range(1, 3)
+    # train_and_save_model(model_epoch_1, epochs_number_1, model)
 
-    epochs_number_3 = 3
-    model_epoch_3 = [5, 8, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20]
-    train_and_save_model(model_epoch_3, epochs_number_3, model)
+    # epochs_number_1 = 1
+    # model_epoch_1 = range(1, 21)
+    # train_and_save_model(model_epoch_1, epochs_number_1, model)
 
-    epochs_number_10 = 10
-    model_epoch_10 = [8, 13, 15, 16, 17, 19, 20]
-    train_and_save_model(model_epoch_10, epochs_number_10, model)
+    # epochs_number_3 = 3
+    # model_epoch_3 = [5, 8, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20]
+    # train_and_save_model(model_epoch_3, epochs_number_3, model)
+
+    # epochs_number_10 = 10
+    # model_epoch_10 = [8, 13, 15, 16, 17, 19, 20]
+    # train_and_save_model(model_epoch_10, epochs_number_10, model)
+
+    train_and_save_model([17, 19, 20], 30, model)
