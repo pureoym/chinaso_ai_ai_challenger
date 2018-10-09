@@ -400,4 +400,4 @@ if __name__ == '__main__':
     # model_epoch_10 = [8, 13, 15, 16, 17, 19, 20]
     # train_and_save_model(model_epoch_10, epochs_number_10, model)
 
-    train_and_save_model([16], 100, model)
+    train_and_save_model([16], 10, model)
