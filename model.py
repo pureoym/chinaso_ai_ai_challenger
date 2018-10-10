@@ -112,10 +112,10 @@ def text_cnn_multi_class():
     构建多分类text_cnn模型
     :return:
     """
-    # Inputs
+    # 输入层
     sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
 
-    # Embeddings layers
+    # 嵌入层
     # load pre-trained word embeddings into an Embedding layer
     # note that we set trainable = False so as to keep the embeddings fixed
     embedding_matrix = np.load(EMBEDDING_MATRIX)
@@ -127,7 +127,7 @@ def text_cnn_multi_class():
                                 trainable=False)
     embedded_sequences = embedding_layer(sequence_input)
 
-    # conv layers
+    # 卷积层
     convs = []
     for filter_size in FILTER_SIZES:
         l_conv = Conv1D(filters=NUM_FILTERS,
@@ -138,6 +138,7 @@ def text_cnn_multi_class():
         convs.append(l_pool)
     merge = concatenate(convs, axis=1)
 
+    # 全连接层
     x = Dropout(DROPOUT_RATE)(merge)
     x = Dense(HIDDEN_DIMS, activation='relu')(x)
 
@@ -152,6 +153,13 @@ def text_cnn_multi_class():
 
 
 def train_and_save_model(model_index_list, epochs_number, model):
+    """
+    训练并保存模型
+    :param model_index_list:
+    :param epochs_number:
+    :param model:
+    :return:
+    """
     for i in model_index_list:
         print('################[ multi_epochs_model_' + str(i) + ' ]################')
         path = os.path.join(DATA_DIR, 'numeric_data_l' + str(i) + '.csv')
