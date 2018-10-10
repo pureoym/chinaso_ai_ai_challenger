@@ -25,15 +25,16 @@ import numpy as np
 BASE_DIR = '/data0/search/ai_challenger/'
 
 SEG_SPLITTER = ' '
+
 # Prepossessing parameters
 MAX_SEQUENCE_LENGTH = 300 # 一条内容最多包含词数量
 MAX_NUM_WORDS = 150000  # 词典最大词数，若语料中含词数超过该数，则取前MAX_NUM_WORDS个
 NUM_LABELS = 4  # 分类数目
+EMBEDDING_DIM = 300
 
 
 # 打开停用词表并做处理
 STOP_WORDS_LIST = os.path.join(BASE_DIR, 'data/stop_list.txt')  # 停用词表
-DIRTY_WORDS = os.path.join(BASE_DIR, 'dirty_words.txt')  # 脏话合集
 with open(STOP_WORDS_LIST, 'r') as f:
     stop_words = f.readlines()
 del stop_words[0]  # 删除txt文件第一行的特殊字符
@@ -95,3 +96,8 @@ def word2index(tokens):
             else:
                 indexes.append('0')
     return SEG_SPLITTER.join(indexes).strip()
+
+
+
+
+
