@@ -99,7 +99,7 @@ def trained_model(input_path, epochs_number):
     :return:
     """
     m1 = textcnn_model.text_cnn_multi_class()
-    print(m1.summary())
+    # print(m1.summary())
     x_train, y_train, x_test, y_test = textcnn_model.pre_processing_multi_class(input_path)
     m1.fit(x_train, y_train,
               batch_size=BATCH_SIZE,
@@ -161,6 +161,12 @@ def predict_label_via_indexes(df):
 #     max_index = l2.index(max(l2))
 
 
+def get_input_file_path(index):
+    input_file_name = 'data/numeric_data_l' + str(index) + '.csv'
+    input_path = os.path.join(BASE_DIR, input_file_name)
+    return input_path
+
+
 if __name__ == '__main__':
     # 切换工作路径
     import os
@@ -170,7 +176,7 @@ if __name__ == '__main__':
     test_df = pd.read_csv(TEST_DATA_PATH2)
 
     # 训练模型
-    input_path = os.path.join(BASE_DIR, 'data/numeric_data_l1.csv')
+    input_path = get_input_file_path(1)
     epochs_number = 1
     m1 = trained_model(input_path,epochs_number)
 
