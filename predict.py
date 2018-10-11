@@ -30,6 +30,7 @@ import jieba
 import os
 import numpy as np
 import utils
+import model
 
 BASE_DIR = '/data0/search/ai_challenger/'
 TEST_DATA_PATH = os.path.join(BASE_DIR, 'data/test/sentiment_analysis_testa.csv')
@@ -130,86 +131,6 @@ def get_trained_models(model_path):
     return models
 
 
-def text_cnn_multi_class():
-    """
-    构建多分类text_cnn模型
-    :return:
-    """
-    # 输入层
-    sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
-
-    # 嵌入层
-    # load pre-trained word embeddings into an Embedding layer
-    # note that we set trainable = False so as to keep the embeddings fixed
-    embedding_matrix = np.load(EMBEDDING_MATRIX)
-    num_words = embedding_matrix.shape[0] + 1
-    embedding_layer = Embedding(num_words,
-                                EMBEDDING_DIM,
-                                embeddings_initializer=Constant(embedding_matrix),
-                                input_length=MAX_SEQUENCE_LENGTH,
-                                trainable=False)
-    embedded_sequences = embedding_layer(sequence_input)
-
-    # 卷积层
-    convs = []
-    for filter_size in FILTER_SIZES:
-        l_conv = Conv1D(filters=NUM_FILTERS,
-                        kernel_size=filter_size,
-                        activation='relu')(embedded_sequences)
-        l_pool = MaxPooling1D(MAX_SEQUENCE_LENGTH - filter_size + 1)(l_conv)
-        l_pool = Flatten()(l_pool)
-        convs.append(l_pool)
-    merge = concatenate(convs, axis=1)
-
-    # 全连接层
-    x = Dropout(DROPOUT_RATE)(merge)
-    x = Dense(HIDDEN_DIMS, activation='relu')(x)
-
-    preds = Dense(units=NUM_LABELS, activation='softmax')(x)
-
-    model = Model(sequence_input, preds)
-    model.compile(loss="categorical_crossentropy",
-                  optimizer="rmsprop",
-                  metrics=['acc'])
-
-    return model
-
-
-def pre_processing_multi_class(path):
-    """
-    预处理。获取训练集，测试集。
-    :return:
-    """
-
-    # 获取数字化的数据集
-    d1 = pd.read_csv(path)
-    d1['index_array'] = d1['indexes'].map(lambda x: x.split(SEG_SPLITTER))
-    sequences = d1['index_array']
-    data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH, padding='post')
-    labels = d1['labels'].values.reshape(-1, 1)
-    labels = to_categorical(labels)
-    # print('Shape of data tensor:', data.shape)
-    # print('Shape of label tensor:', labels.shape)
-
-    # 切分训练集和测试集
-    data_size = data.shape[0]
-    indices = np.arange(data_size)
-    np.random.shuffle(indices)
-    data = data[indices]
-    labels = labels[indices]
-    train_test_samples = int(TEST_SPLIT * data_size)
-
-    x_train = data[:-train_test_samples]
-    y_train = labels[:-train_test_samples]
-    x_test = data[-train_test_samples:]
-    y_test = labels[-train_test_samples:]
-    # print('Shape of data x_train:', x_train.shape)
-    # print('Shape of label y_train:', y_train.shape)
-    # print('Shape of data x_test:', x_test.shape)
-    # print('Shape of label y_test:', y_test.shape)
-    return x_train, y_train, x_test, y_test
-
-
 def trained_model(input_path, epochs_number):
     """
     训练单个模型
@@ -217,18 +138,18 @@ def trained_model(input_path, epochs_number):
     :param epochs_number: 迭代次数
     :return:
     """
-    model = text_cnn_multi_class()
+    m1 = model.text_cnn_multi_class()
     print(model.summary())
     input_path = '/data0/search/ai_challenger/data/numeric_data_l1.csv'
-    x_train, y_train, x_test, y_test = pre_processing_multi_class(input_path)
-    model.fit(x_train, y_train,
+    x_train, y_train, x_test, y_test = model.pre_processing_multi_class(input_path)
+    m1.fit(x_train, y_train,
               batch_size=BATCH_SIZE,
               epochs=epochs_number,
               validation_split=VALIDATION_SPLIT,
               shuffle=True)
-    scores = model.evaluate(x_test, y_test)
+    scores = m1.evaluate(x_test, y_test)
     print('test_loss: %f, accuracy: %f' % (scores[0], scores[1]))
-    return model
+    return m1
 
 
 def predict_and_generate_result(test_data, models, result_path):
@@ -248,7 +169,7 @@ def get_result(input_indexes):
     :param input_indexes:预处理好的保存在csv中的indexes字段
     :return:
     """
-    rate = model.predict(np.matrix(input_indexes))
+    rate = m1.predict(np.matrix(input_indexes))
     l1 = rate.tolist()[0]
     result = l1.index(max(l1)) - 2
     return result
@@ -282,13 +203,15 @@ def predict_label_via_indexes(df):
 
 
 if __name__ == '__main__':
+    # 切换工作路径
+
     # 获取测试集
-    test_df = pd.read_csv('/data0/search/r1.csv')
+    test_df = pd.read_csv('/data0/search/data/r1.csv')
 
     # 训练模型
     input_path = '/data0/search/ai_challenger/data/numeric_data_l1.csv'
     epochs_number = 1
-    model = trained_model(input_path,epochs_number)
+    m1 = trained_model(input_path,epochs_number)
 
     # 预测结果
     result_df = predict_label_via_indexes(test_df)
