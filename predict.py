@@ -91,7 +91,7 @@ def data_preprocess(data_path):
 #     return models
 
 
-def trained_model(input_path, epochs_number):
+def train_model(input_path, epochs_number):
     """
     训练单个模型
     :param input_path:模型的输入
@@ -161,7 +161,7 @@ def predict_label_via_indexes(df):
 #     max_index = l2.index(max(l2))
 
 
-def get_input_file_path(index):
+def get_training_data_file_path(index):
     input_file_name = 'data/numeric_data_l' + str(index) + '.csv'
     input_path = os.path.join(BASE_DIR, input_file_name)
     return input_path
@@ -176,9 +176,9 @@ if __name__ == '__main__':
     test_df = pd.read_csv(TEST_DATA_PATH2)
 
     # 训练模型
-    input_path = get_input_file_path(1)
+    training_data_path = get_training_data_file_path(1)
     epochs_number = 1
-    m1 = trained_model(input_path,epochs_number)
+    m1 = train_model(training_data_path,epochs_number)
 
     # 预测结果
     result_df = predict_label_via_indexes(test_df)
