@@ -173,15 +173,33 @@ def get_training_path_and_result_path(index):
 if __name__ == '__main__':
     # 切换工作路径
     import os
-
     os.chdir('/application/search/chinaso_ai_ai_challenger')
+
+    # 指定GPU
+    import os
+    import tensorflow as tf
+    import keras.backend.tensorflow_backend as KTF
+
+    # 进行配置，每个GPU使用60%上限现存
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"  # 使用编号为1，2号的GPU
+    config = tf.ConfigProto()
+    config.gpu_options.per_process_gpu_memory_fraction = 0.9  # 每个GPU现存上届控制在90%以内
+    session = tf.Session(config=config)
+
+    # 设置session
+    KTF.set_session(session)
+
+
+
 
     # 获取测试集
     test_df = pd.read_csv(TEST_DATA_PATH2)
 
-    # 训练模型
+    # 设置标签，并获取相关路径
     label_index = 1
     training_path, result_path, label_name = get_training_path_and_result_path(label_index)
+
+    # 训练模型
     epochs_number = 1
     m1 = train_model(training_path, epochs_number)
 
