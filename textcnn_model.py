@@ -3,7 +3,7 @@
 # @Author  : pureoym
 # @Contact : pureoym@163.com
 # @TIME    : 2018/10/8 11:21
-# @File    : model.py
+# @File    : textcnn_model.py
 # Copyright 2017 pureoym. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

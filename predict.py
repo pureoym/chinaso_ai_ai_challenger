@@ -18,65 +18,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from keras.layers import Dense, Flatten, Conv1D, MaxPooling1D, Dropout, Input, concatenate, Embedding
-from keras.models import Model
-from keras.initializers import Constant
-from keras.preprocessing.sequence import pad_sequences
-from keras.utils import to_categorical
 from keras.models import load_model
-
 import pandas as pd
-import jieba
 import os
 import numpy as np
+import textcnn_model
 import utils
-import model
 
 BASE_DIR = '/data0/search/ai_challenger/'
 TEST_DATA_PATH = os.path.join(BASE_DIR, 'data/test/sentiment_analysis_testa.csv')
+TEST_DATA_PATH2 = os.path.join(BASE_DIR, 'data/r1.csv')
 MODEL_DIR = os.path.join(BASE_DIR, 'models/')
 RESULT_PATH = os.path.join(BASE_DIR, 'result/result.csv')
 
 
-# 数据保存地址
-BASE_DIR = '/data0/search/ai_challenger/'
-DATA_DIR = os.path.join(BASE_DIR, 'data/')
-WORD2VEC = os.path.join(BASE_DIR, 'data/sgns.merge.bigram')
-TRAIN_DATA_PATH = os.path.join(BASE_DIR, 'data/train/sentiment_analysis_trainingset.csv')
-TEST_DATA_PATH = os.path.join(BASE_DIR, 'data/test/sentiment_analysis_testa.csv')
-VALIDATION_DATA_PATH = os.path.join(BASE_DIR, 'data/train/sentiment_analysis_trainingset.csv')
-WORD_INDEX = os.path.join(BASE_DIR, 'data/word_index.npy')
-EMBEDDING_MATRIX = os.path.join(BASE_DIR, 'data/embedding_matrix.npy')
-SEG_DATA = os.path.join(BASE_DIR, 'data/seg_data.csv')
-PROCESSED_DATA = os.path.join(BASE_DIR, 'data/processed_data.csv')
-
-MODEL_DIR = os.path.join(BASE_DIR, 'models/')
-# NUMERIC_DATA = os.path.join(MODEL_DIR, 'numeric_data.csv')
-# MODEL = os.path.join(MODEL_DIR, 'model.h5')
-
 SEG_SPLITTER = ' '
-# 加载word_index
-WORD_INDEX = os.path.join(BASE_DIR, 'data/word_index.npy')
-word_index = np.load(WORD_INDEX)[()]
-print('load word_index: ' + WORD_INDEX)
-
-# Model Hyperparameters
-EMBEDDING_DIM = 300  # 词向量维数
-NUM_FILTERS = 100  # 滤波器数目
-FILTER_SIZES = [2, 3, 4, 5]  # 卷积核
-DROPOUT_RATE = 0.5
-HIDDEN_DIMS = 64
 VALIDATION_SPLIT = 0.2
-TEST_SPLIT = 0.2
-
-# Training parameters
 BATCH_SIZE = 64
 NUM_EPOCHS = 1
 
-# Prepossessing parameters
-MAX_SEQUENCE_LENGTH = 300
-MAX_NUM_WORDS = 150000  # 词典最大词数，若语料中含词数超过该数，则取前MAX_NUM_WORDS个
-NUM_LABELS = 4  # 分类数目
 
 label_dict = {'location_traffic_convenience': 'l1',
               'location_distance_from_business_district': 'l2',
@@ -138,10 +98,9 @@ def trained_model(input_path, epochs_number):
     :param epochs_number: 迭代次数
     :return:
     """
-    m1 = model.text_cnn_multi_class()
-    print(model.summary())
-    input_path = '/data0/search/ai_challenger/data/numeric_data_l1.csv'
-    x_train, y_train, x_test, y_test = model.pre_processing_multi_class(input_path)
+    m1 = textcnn_model.text_cnn_multi_class()
+    print(m1.summary())
+    x_train, y_train, x_test, y_test = textcnn_model.pre_processing_multi_class(input_path)
     m1.fit(x_train, y_train,
               batch_size=BATCH_SIZE,
               epochs=epochs_number,
@@ -208,10 +167,10 @@ if __name__ == '__main__':
     os.chdir('/application/search/chinaso_ai_ai_challenger')
 
     # 获取测试集
-    test_df = pd.read_csv('/data0/search/data/r1.csv')
+    test_df = pd.read_csv(TEST_DATA_PATH2)
 
     # 训练模型
-    input_path = '/data0/search/ai_challenger/data/numeric_data_l1.csv'
+    input_path = os.path.join(BASE_DIR, 'data/numeric_data_l1.csv')
     epochs_number = 1
     m1 = trained_model(input_path,epochs_number)
 
