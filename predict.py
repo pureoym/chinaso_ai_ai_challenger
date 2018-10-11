@@ -204,6 +204,8 @@ def predict_label_via_indexes(df):
 
 if __name__ == '__main__':
     # 切换工作路径
+    import os
+    os.chdir('/application/search/chinaso_ai_ai_challenger')
 
     # 获取测试集
     test_df = pd.read_csv('/data0/search/data/r1.csv')
