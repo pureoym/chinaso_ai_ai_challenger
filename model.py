@@ -28,6 +28,17 @@ from tensorflow.python.keras.initializers import Constant
 from tensorflow.python.keras.preprocessing.sequence import pad_sequences
 from tensorflow.python.keras.utils import to_categorical
 from tensorflow.python.keras.models import load_model
+
+
+
+
+from keras.layers import Dense, Flatten, Conv1D, MaxPooling1D, Dropout, Input, concatenate, Embedding
+from keras.models import Model
+from keras.initializers import Constant
+from keras.preprocessing.sequence import pad_sequences
+from keras.utils import to_categorical
+from keras.models import load_model
+
 import pandas as pd
 import jieba
 import os

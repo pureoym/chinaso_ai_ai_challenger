@@ -47,6 +47,7 @@ word_index = np.load(WORD_INDEX)[()]
 print('load word_index: ' + WORD_INDEX)
 
 
+
 def get_index_sequence_from_text(text):
     """
     获取词序列
