@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-from keras.models import load_model
+# from keras.models import load_model
 import pandas as pd
 import os
 import numpy as np
@@ -75,20 +75,20 @@ def data_preprocess(data_path):
     return data
 
 
-def get_trained_models(model_path):
-    """
-    获取模型。
-    :param model_path: 模型地址
-    :return:20个模型的列表
-    """
-    models = {}
-    for i in range(1, 21):
-        # model_path = os.path.join(MODEL_DIR, 'model_'+str(i)+'*')
-        # model_name = 'model_' + str(i) + '_epoch_1.h5'
-        model_name = 'model_1_epoch_1.h5'
-        model_path = os.path.join(MODEL_DIR, model_name)
-        models[i] = load_model(model_path)
-    return models
+# def get_trained_models(model_path):
+#     """
+#     获取模型。
+#     :param model_path: 模型地址
+#     :return:20个模型的列表
+#     """
+#     models = {}
+#     for i in range(1, 21):
+#         # model_path = os.path.join(MODEL_DIR, 'model_'+str(i)+'*')
+#         # model_name = 'model_' + str(i) + '_epoch_1.h5'
+#         model_name = 'model_1_epoch_1.h5'
+#         model_path = os.path.join(MODEL_DIR, model_name)
+#         models[i] = load_model(model_path)
+#     return models
 
 
 def trained_model(input_path, epochs_number):
@@ -140,9 +140,9 @@ def predict_label_via_indexes(df):
     :param df:输入dateframe，需要有indexes字段。
     :return:
     """
-    df['l1'] = df['indexes'].map(get_result)
-    df2 = df[['content', 'indexes', 'l1']]
-    df2.rename(columns={'l1': 'location_traffic_convenience'}, inplace=True)
+    df['prediction'] = df['indexes'].map(get_result)
+    df2 = df[['content', 'prediction']]
+    # df2.rename(columns={'l1': 'location_traffic_convenience'}, inplace=True)
     return df2
 
 
@@ -177,7 +177,9 @@ if __name__ == '__main__':
     # 预测结果
     result_df = predict_label_via_indexes(test_df)
 
-    # 查看
+    # 查看并重命名
+    result_df
+    result_df.rename(columns={'prediction': 'location_traffic_convenience'}, inplace=True)
     result_df
 
     # 保存结果
