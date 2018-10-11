@@ -18,16 +18,64 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========================================================================
-import os
-import pandas as pd
-from tensorflow.python.keras.models import load_model
+from keras.layers import Dense, Flatten, Conv1D, MaxPooling1D, Dropout, Input, concatenate, Embedding
+from keras.models import Model
+from keras.initializers import Constant
+from keras.preprocessing.sequence import pad_sequences
+from keras.utils import to_categorical
 from keras.models import load_model
+
+import pandas as pd
+import jieba
+import os
+import numpy as np
 import utils
 
 BASE_DIR = '/data0/search/ai_challenger/'
 TEST_DATA_PATH = os.path.join(BASE_DIR, 'data/test/sentiment_analysis_testa.csv')
 MODEL_DIR = os.path.join(BASE_DIR, 'models/')
 RESULT_PATH = os.path.join(BASE_DIR, 'result/result.csv')
+
+
+# 数据保存地址
+BASE_DIR = '/data0/search/ai_challenger/'
+DATA_DIR = os.path.join(BASE_DIR, 'data/')
+WORD2VEC = os.path.join(BASE_DIR, 'data/sgns.merge.bigram')
+TRAIN_DATA_PATH = os.path.join(BASE_DIR, 'data/train/sentiment_analysis_trainingset.csv')
+TEST_DATA_PATH = os.path.join(BASE_DIR, 'data/test/sentiment_analysis_testa.csv')
+VALIDATION_DATA_PATH = os.path.join(BASE_DIR, 'data/train/sentiment_analysis_trainingset.csv')
+WORD_INDEX = os.path.join(BASE_DIR, 'data/word_index.npy')
+EMBEDDING_MATRIX = os.path.join(BASE_DIR, 'data/embedding_matrix.npy')
+SEG_DATA = os.path.join(BASE_DIR, 'data/seg_data.csv')
+PROCESSED_DATA = os.path.join(BASE_DIR, 'data/processed_data.csv')
+
+MODEL_DIR = os.path.join(BASE_DIR, 'models/')
+# NUMERIC_DATA = os.path.join(MODEL_DIR, 'numeric_data.csv')
+# MODEL = os.path.join(MODEL_DIR, 'model.h5')
+
+SEG_SPLITTER = ' '
+# 加载word_index
+WORD_INDEX = os.path.join(BASE_DIR, 'data/word_index.npy')
+word_index = np.load(WORD_INDEX)[()]
+print('load word_index: ' + WORD_INDEX)
+
+# Model Hyperparameters
+EMBEDDING_DIM = 300  # 词向量维数
+NUM_FILTERS = 100  # 滤波器数目
+FILTER_SIZES = [2, 3, 4, 5]  # 卷积核
+DROPOUT_RATE = 0.5
+HIDDEN_DIMS = 64
+VALIDATION_SPLIT = 0.2
+TEST_SPLIT = 0.2
+
+# Training parameters
+BATCH_SIZE = 64
+NUM_EPOCHS = 1
+
+# Prepossessing parameters
+MAX_SEQUENCE_LENGTH = 300
+MAX_NUM_WORDS = 150000  # 词典最大词数，若语料中含词数超过该数，则取前MAX_NUM_WORDS个
+NUM_LABELS = 4  # 分类数目
 
 label_dict = {'location_traffic_convenience': 'l1',
               'location_distance_from_business_district': 'l2',
@@ -49,7 +97,6 @@ label_dict = {'location_traffic_convenience': 'l1',
               'dish_recommendation': 'l18',
               'others_overall_experience': 'l19',
               'others_willing_to_consume_again': 'l20'}
-
 
 
 def data_preprocess(data_path):
@@ -74,12 +121,114 @@ def get_trained_models(model_path):
     :return:20个模型的列表
     """
     models = {}
-    for i in range(1,21):
+    for i in range(1, 21):
         # model_path = os.path.join(MODEL_DIR, 'model_'+str(i)+'*')
         # model_name = 'model_' + str(i) + '_epoch_1.h5'
         model_name = 'model_1_epoch_1.h5'
-        model_path = os.path.join(MODEL_DIR, model_name)load_model(model_path)
-        models[i]=
+        model_path = os.path.join(MODEL_DIR, model_name)
+        models[i] = load_model(model_path)
+    return models
+
+
+def text_cnn_multi_class():
+    """
+    构建多分类text_cnn模型
+    :return:
+    """
+    # 输入层
+    sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
+
+    # 嵌入层
+    # load pre-trained word embeddings into an Embedding layer
+    # note that we set trainable = False so as to keep the embeddings fixed
+    embedding_matrix = np.load(EMBEDDING_MATRIX)
+    num_words = embedding_matrix.shape[0] + 1
+    embedding_layer = Embedding(num_words,
+                                EMBEDDING_DIM,
+                                embeddings_initializer=Constant(embedding_matrix),
+                                input_length=MAX_SEQUENCE_LENGTH,
+                                trainable=False)
+    embedded_sequences = embedding_layer(sequence_input)
+
+    # 卷积层
+    convs = []
+    for filter_size in FILTER_SIZES:
+        l_conv = Conv1D(filters=NUM_FILTERS,
+                        kernel_size=filter_size,
+                        activation='relu')(embedded_sequences)
+        l_pool = MaxPooling1D(MAX_SEQUENCE_LENGTH - filter_size + 1)(l_conv)
+        l_pool = Flatten()(l_pool)
+        convs.append(l_pool)
+    merge = concatenate(convs, axis=1)
+
+    # 全连接层
+    x = Dropout(DROPOUT_RATE)(merge)
+    x = Dense(HIDDEN_DIMS, activation='relu')(x)
+
+    preds = Dense(units=NUM_LABELS, activation='softmax')(x)
+
+    model = Model(sequence_input, preds)
+    model.compile(loss="categorical_crossentropy",
+                  optimizer="rmsprop",
+                  metrics=['acc'])
+
+    return model
+
+
+def pre_processing_multi_class(path):
+    """
+    预处理。获取训练集，测试集。
+    :return:
+    """
+
+    # 获取数字化的数据集
+    d1 = pd.read_csv(path)
+    d1['index_array'] = d1['indexes'].map(lambda x: x.split(SEG_SPLITTER))
+    sequences = d1['index_array']
+    data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH, padding='post')
+    labels = d1['labels'].values.reshape(-1, 1)
+    labels = to_categorical(labels)
+    # print('Shape of data tensor:', data.shape)
+    # print('Shape of label tensor:', labels.shape)
+
+    # 切分训练集和测试集
+    data_size = data.shape[0]
+    indices = np.arange(data_size)
+    np.random.shuffle(indices)
+    data = data[indices]
+    labels = labels[indices]
+    train_test_samples = int(TEST_SPLIT * data_size)
+
+    x_train = data[:-train_test_samples]
+    y_train = labels[:-train_test_samples]
+    x_test = data[-train_test_samples:]
+    y_test = labels[-train_test_samples:]
+    # print('Shape of data x_train:', x_train.shape)
+    # print('Shape of label y_train:', y_train.shape)
+    # print('Shape of data x_test:', x_test.shape)
+    # print('Shape of label y_test:', y_test.shape)
+    return x_train, y_train, x_test, y_test
+
+
+def trained_model(input_path, epochs_number):
+    """
+    训练单个模型
+    :param input_path:模型的输入
+    :param epochs_number: 迭代次数
+    :return:
+    """
+    model = text_cnn_multi_class()
+    print(model.summary())
+    input_path = '/data0/search/ai_challenger/data/numeric_data_l1.csv'
+    x_train, y_train, x_test, y_test = pre_processing_multi_class(input_path)
+    model.fit(x_train, y_train,
+              batch_size=BATCH_SIZE,
+              epochs=epochs_number,
+              validation_split=VALIDATION_SPLIT,
+              shuffle=True)
+    scores = model.evaluate(x_test, y_test)
+    print('test_loss: %f, accuracy: %f' % (scores[0], scores[1]))
+    return model
 
 
 def predict_and_generate_result(test_data, models, result_path):
@@ -93,31 +242,59 @@ def predict_and_generate_result(test_data, models, result_path):
 
 
 def get_result(input_indexes):
+    """
+    通过indexes字段预测label字段
+    需要将content字段经过预处理，处理成indexes字段。并需要预训练好的模型model。
+    :param input_indexes:预处理好的保存在csv中的indexes字段
+    :return:
+    """
     rate = model.predict(np.matrix(input_indexes))
-    l1=rate.tolist()[0]
-    result = l1.index(max(l1)) -2
+    l1 = rate.tolist()[0]
+    result = l1.index(max(l1)) - 2
     return result
 
 
+def predict_label_via_indexes(df):
+    """
+    根据输入dateframe的indexes字段，通过模型预测label字段。并保存。
+    :param df:输入dateframe，需要有indexes字段。
+    :return:
+    """
+    df['l1'] = df['indexes'].map(get_result)
+    df2 = df[['content', 'indexes', 'l1']]
+    df2.rename(columns={'l1': 'location_traffic_convenience'}, inplace=True)
+    return df2
 
 
 
-def test():
-    df1['l1'] = df1['indexes'].map(get_result)
-    df2 = df1[['content', 'indexes', 'l1']]
-    df2.rename(columns={'l1':'location_traffic_convenience'}, inplace=True)
-
+# if __name__ == '__main__':
+#     # 处理原始测试数据数据，处理成模型输入所需要的形式。
+#     processed_test_data = data_preprocess(TEST_DATA_PATH)
+#
+#     # 获取模型
+#     models = get_trained_models(MODEL_DIR)
+#
+#     # 根据模型预测，将预测结果处理成提交数据
+#     predict_and_generate_result(processed_test_data, models, RESULT_PATH)
+#
+#     l2 = l1.tolist()[0]
+#     max_index = l2.index(max(l2))
 
 
 if __name__ == '__main__':
-    # 处理原始测试数据数据，处理成模型输入所需要的形式。
-    processed_test_data = data_preprocess(TEST_DATA_PATH)
+    # 获取测试集
+    test_df = pd.read_csv('/data0/search/r1.csv')
 
-    # 获取模型
-    models = get_trained_models(MODEL_DIR)
+    # 训练模型
+    input_path = '/data0/search/ai_challenger/data/numeric_data_l1.csv'
+    epochs_number = 1
+    model = trained_model(input_path,epochs_number)
 
-    # 根据模型预测，将预测结果处理成提交数据
-    predict_and_generate_result(processed_test_data, models, RESULT_PATH)
+    # 预测结果
+    result_df = predict_label_via_indexes(test_df)
 
-    l2 = l1.tolist()[0]
-    max_index = l2.index(max(l2))
+    # 查看
+    result_df
+
+    # 保存结果
+    result_df.to_csv('/data0/search/result1.csv')
