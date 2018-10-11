@@ -132,15 +132,18 @@ def get_result(input_indexes):
     return result
 
 
-def predict_label_via_indexes(df):
+def predict_and_save(df, result_path, label_name):
     """
     根据输入dateframe的indexes字段，通过模型预测label字段。并保存。
     :param df:输入dateframe，需要有indexes字段。
+    :param result_path: 输出的文件路径
+    :param label_name: 预测的标签名称
     :return:
     """
     df['prediction'] = df['indexes'].map(get_result)
     df2 = df[['content', 'prediction']]
-    # df2.rename(columns={'l1': 'location_traffic_convenience'}, inplace=True)
+    df2.rename(columns={'prediction': label_name}, inplace=True)
+    df2.to_csv(result_path)
     return df2
 
 
@@ -177,17 +180,10 @@ if __name__ == '__main__':
     test_df = pd.read_csv(TEST_DATA_PATH2)
 
     # 训练模型
-    training_path, result_path, label_name = get_training_path_and_result_path(1)
+    label_index = 1
+    training_path, result_path, label_name = get_training_path_and_result_path(label_index)
     epochs_number = 1
     m1 = train_model(training_path, epochs_number)
 
-    # 预测结果
-    result_df = predict_label_via_indexes(test_df)
-
-    # 查看并重命名
-    result_df
-    result_df.rename(columns={'prediction': label_name}, inplace=True)
-    result_df
-
-    # 保存结果
-    result_df.to_csv(result_path)
+    # 预测结果并保存，同时可以查看
+    result_df = predict_and_save(test_df, result_path, label_name)
