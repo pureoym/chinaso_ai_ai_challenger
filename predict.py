@@ -31,12 +31,10 @@ TEST_DATA_PATH2 = os.path.join(BASE_DIR, 'data/r1.csv')
 MODEL_DIR = os.path.join(BASE_DIR, 'models/')
 RESULT_PATH = os.path.join(BASE_DIR, 'result/result.csv')
 
-
 SEG_SPLITTER = ' '
 VALIDATION_SPLIT = 0.2
 BATCH_SIZE = 64
 NUM_EPOCHS = 1
-
 
 label_dict = {'location_traffic_convenience': 'l1',
               'location_distance_from_business_district': 'l2',
@@ -102,10 +100,10 @@ def train_model(input_path, epochs_number):
     # print(m1.summary())
     x_train, y_train, x_test, y_test = textcnn_model.pre_processing_multi_class(input_path)
     m1.fit(x_train, y_train,
-              batch_size=BATCH_SIZE,
-              epochs=epochs_number,
-              validation_split=VALIDATION_SPLIT,
-              shuffle=True)
+           batch_size=BATCH_SIZE,
+           epochs=epochs_number,
+           validation_split=VALIDATION_SPLIT,
+           shuffle=True)
     scores = m1.evaluate(x_test, y_test)
     print('test_loss: %f, accuracy: %f' % (scores[0], scores[1]))
     return m1
@@ -146,7 +144,6 @@ def predict_label_via_indexes(df):
     return df2
 
 
-
 # if __name__ == '__main__':
 #     # 处理原始测试数据数据，处理成模型输入所需要的形式。
 #     processed_test_data = data_preprocess(TEST_DATA_PATH)
@@ -161,32 +158,36 @@ def predict_label_via_indexes(df):
 #     max_index = l2.index(max(l2))
 
 
-def get_training_data_file_path(index):
-    input_file_name = 'data/numeric_data_l' + str(index) + '.csv'
-    input_path = os.path.join(BASE_DIR, input_file_name)
-    return input_path
+def get_training_path_and_result_path(index):
+    training_file_name = 'data/numeric_data_l' + str(index) + '.csv'
+    result_file_name = 'tmp/result_label_' + str(index) + '.csv'
+    training_path = os.path.join(BASE_DIR, training_file_name)
+    result_path = os.path.join(BASE_DIR, result_file_name)
+    label_name = 'l' + str(index)
+    return training_path, result_path, label_name
 
 
 if __name__ == '__main__':
     # 切换工作路径
     import os
+
     os.chdir('/application/search/chinaso_ai_ai_challenger')
 
     # 获取测试集
     test_df = pd.read_csv(TEST_DATA_PATH2)
 
     # 训练模型
-    training_data_path = get_training_data_file_path(1)
+    training_path, result_path, label_name = get_training_path_and_result_path(1)
     epochs_number = 1
-    m1 = train_model(training_data_path,epochs_number)
+    m1 = train_model(training_path, epochs_number)
 
     # 预测结果
     result_df = predict_label_via_indexes(test_df)
 
     # 查看并重命名
     result_df
-    result_df.rename(columns={'prediction': 'location_traffic_convenience'}, inplace=True)
+    result_df.rename(columns={'prediction': label_name}, inplace=True)
     result_df
 
     # 保存结果
-    result_df.to_csv('/data0/search/result1.csv')
+    result_df.to_csv(result_path)
