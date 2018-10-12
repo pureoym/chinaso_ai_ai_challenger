@@ -173,7 +173,6 @@ def get_training_path_and_result_path(index):
 if __name__ == '__main__':
     # 切换工作路径
     import os
-
     os.chdir('/application/search/chinaso_ai_ai_challenger')
 
     # # 指定GPU
@@ -195,7 +194,7 @@ if __name__ == '__main__':
     test_df = pd.read_csv(TEST_DATA_PATH2)
 
     # 设置标签，并获取相关路径
-    label_index = 1
+    label_index = 2
     training_path, result_path, label_name = get_training_path_and_result_path(label_index)
 
     # 训练模型
