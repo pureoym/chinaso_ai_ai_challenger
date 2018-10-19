@@ -57,6 +57,8 @@ label_dict = {'location_traffic_convenience': 'l1',
               'others_overall_experience': 'l19',
               'others_willing_to_consume_again': 'l20'}
 
+label_dict_2 =  {v: k for k, v in label_dict.items()}
+
 
 def data_preprocess(data_path):
     """
@@ -170,7 +172,11 @@ def get_training_path_and_result_path(index):
     return training_path, result_path, label_name
 
 
-if __name__ == '__main__':
+def test():
+    """
+    在jupyter命令行的操作
+    :return:
+    """
     # 切换工作路径
     import os
     os.chdir('/application/search/chinaso_ai_ai_challenger')
@@ -203,3 +209,21 @@ if __name__ == '__main__':
 
     # 预测结果并保存，同时可以查看
     result_df = predict_and_save(test_df, result_path, label_name)
+
+
+if __name__ == '__main__':
+    p1 = '/data0/search/ai_challenger/tmp/result_label_1.csv'
+    r1 = pd.read_csv(p1)
+    r1.rename(columns={'Unnamed: 0': 'id'}, inplace=True)
+    result_all = r1
+    for i in range(2,21):
+        pi = '/data0/search/ai_challenger/tmp/result_label_'+str(i)+'.csv'
+        ri = pd.read_csv(pi)
+        label = 'l'+str(i)
+        ri=ri[['content',label]]
+        result_all = pd.merge(result_all,ri,on='content')
+    result_all.rename(columns=label_dict_2,inplace=True)
+    result_all.to_csv('/data0/search/ai_challenger/tmp/final_result.csv',index=False)
+
+
+

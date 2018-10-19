@@ -22,20 +22,16 @@
 # transformer 模型
 # 带attention的lstm
 
-from tensorflow.python.keras.layers import Dense, Flatten, Conv1D, MaxPooling1D, Dropout, Input, concatenate, Embedding
-from tensorflow.python.keras.models import Model
-from tensorflow.python.keras.initializers import Constant
-from tensorflow.python.keras.preprocessing.sequence import pad_sequences
-from tensorflow.python.keras.utils import to_categorical
-from tensorflow.python.keras.models import load_model
+from keras.layers import Dense, Flatten, Conv1D, MaxPooling1D, Dropout, Input, concatenate, Embedding
+from keras.models import Model
+from keras.initializers import Constant
+from keras.preprocessing.sequence import pad_sequences
+from keras.utils import to_categorical
+from keras.models import load_model
 
+from keras.callbacks import Callback
+from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
 
-# from keras.layers import Dense, Flatten, Conv1D, MaxPooling1D, Dropout, Input, concatenate, Embedding
-# from keras.models import Model
-# from keras.initializers import Constant
-# from keras.preprocessing.sequence import pad_sequences
-# from keras.utils import to_categorical
-# from keras.models import load_model
 
 import pandas as pd
 import os
@@ -62,7 +58,7 @@ word_index = {}
 
 # Model Hyperparameters
 EMBEDDING_DIM = 300  # 词向量维数
-NUM_FILTERS = 100  # 滤波器数目
+NUM_FILTERS = 50  # 滤波器数目
 FILTER_SIZES = [2, 3, 4, 5]  # 卷积核
 DROPOUT_RATE = 0.5
 HIDDEN_DIMS = 64
@@ -114,6 +110,51 @@ def pre_processing_multi_class(path):
     return x_train, y_train, x_test, y_test
 
 
+# def text_cnn_multi_class_backup():
+#     """
+#     构建多分类text_cnn模型
+#     :return:
+#     """
+#     # 输入层
+#     sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
+#
+#     # 嵌入层
+#     # load pre-trained word embeddings into an Embedding layer
+#     # note that we set trainable = False so as to keep the embeddings fixed
+#     embedding_matrix = np.load(EMBEDDING_MATRIX)
+#     num_words = embedding_matrix.shape[0] + 1
+#     embedding_layer = Embedding(num_words,
+#                                 EMBEDDING_DIM,
+#                                 embeddings_initializer=Constant(embedding_matrix),
+#                                 input_length=MAX_SEQUENCE_LENGTH,
+#                                 trainable=False)
+#     embedded_sequences = embedding_layer(sequence_input)
+#
+#     # 卷积层
+#     convs = []
+#     for filter_size in FILTER_SIZES:
+#         l_conv = Conv1D(filters=NUM_FILTERS,
+#                         kernel_size=filter_size,
+#                         activation='relu')(embedded_sequences)
+#         l_pool = MaxPooling1D(MAX_SEQUENCE_LENGTH - filter_size + 1)(l_conv)
+#         l_pool = Flatten()(l_pool)
+#         convs.append(l_pool)
+#     merge = concatenate(convs, axis=1)
+#
+#     # 全连接层
+#     x = Dropout(DROPOUT_RATE)(merge)
+#     x = Dense(HIDDEN_DIMS, activation='relu')(x)
+#
+#     preds = Dense(units=NUM_LABELS, activation='softmax')(x)
+#
+#     model = Model(sequence_input, preds)
+#     model.compile(loss="categorical_crossentropy",
+#                   optimizer="rmsprop",
+#                   metrics=['acc'])
+#
+#     return model
+
+
 def text_cnn_multi_class():
     """
     构建多分类text_cnn模型
@@ -141,6 +182,7 @@ def text_cnn_multi_class():
                         kernel_size=filter_size,
                         activation='relu')(embedded_sequences)
         l_pool = MaxPooling1D(MAX_SEQUENCE_LENGTH - filter_size + 1)(l_conv)
+
         l_pool = Flatten()(l_pool)
         convs.append(l_pool)
     merge = concatenate(convs, axis=1)
@@ -153,10 +195,50 @@ def text_cnn_multi_class():
 
     model = Model(sequence_input, preds)
     model.compile(loss="categorical_crossentropy",
-                  optimizer="rmsprop",
-                  metrics=['acc'])
+                  optimizer="rmsprop")
 
     return model
+
+
+
+
+class Metrics(Callback):
+    def on_train_begin(self, logs={}):
+        self.val_f1s = []
+        self.val_recalls = []
+        self.val_precisions = []
+
+    def on_epoch_end(self, epoch, logs={}):
+        # val_predict = (np.asarray(self.model.predict(self.model.validation_data[0]))).round()
+        val_predict = np.argmax(np.asarray(self.model.predict(self.validation_data[0])), axis=1)
+        # val_targ = self.model.validation_data[1]
+        val_targ = np.argmax(self.validation_data[1], axis=1)
+        # _val_f1 = f1_score(val_targ, val_predict)
+        _val_f1 = f1_score(val_targ, val_predict, average='macro')
+        # _val_recall = recall_score(val_targ, val_predict)
+        # _val_precision = precision_score(val_targ, val_predict)
+        self.val_f1s.append(_val_f1)
+        # self.val_recalls.append(_val_recall)
+        # self.val_precisions.append(_val_precision)
+        # print('— val_f1: % f — val_precision: % f — val_recall % f' % (_val_f1, _val_precision, _val_recall))
+        print(' - val_f1:', _val_f1)
+        return
+
+
+
+def test_2():
+
+    metrics = Metrics()
+    path = os.path.join(DATA_DIR, 'numeric_data_l1.csv')
+    # x_train, y_train, x_test, y_test = pre_processing_multi_class(path)
+    x_train, y_train, x_val, y_val = pre_processing_multi_class(path)
+    model = text_cnn_multi_class()
+    model.fit(x_train, y_train,
+              batch_size=BATCH_SIZE,
+              epochs=1,
+              validation_data=(x_val, y_val),
+              callbacks=[metrics],
+              shuffle=True)
 
 
 def train_and_save_model(model_index_list, epochs_number, model):
